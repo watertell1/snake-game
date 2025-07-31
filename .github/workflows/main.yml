@@ -1,8 +1,10 @@
-name: Flask 自动构建
+# .github/workflows/main.yml
+
+name: 自动构建并测试
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main ]  # 监听 main 分支的 push
 
 jobs:
   build:
@@ -22,7 +24,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: 运行 Flask 应用（测试启动用）
+    - name: 启动脚本
       run: |
-        export FLASK_APP=app/app.py
-        flask run --no-debugger --no-reload --port=5000
+        python app/app.py
