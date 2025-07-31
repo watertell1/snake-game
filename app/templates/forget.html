@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>重置密码</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF3A3A',
+                        secondary: '#00A8FF',
+                        accent: '#FFD166',
+                        dark: '#1A1A2E',
+                        'dark-light': '#16213E',
+                    },
+                },
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark text-white font-sans min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="bg-dark-light fixed w-full py-3 px-4">
+        <div class="flex justify-between items-center">
+            <h1 class="text-xl font-bold text-primary">贪吃蛇游戏</h1>
+            <a href="index.html" class="text-gray-300 hover:text-white">
+                <i class="fa fa-home mr-1"></i>主页
+            </a>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="pt-16 pb-8 px-4 max-w-md mx-auto">
+        <div class="bg-dark-light rounded-md p-6">
+            <h2 class="text-2xl font-bold mb-6 text-center text-primary">重置密码</h2>
+
+            <div id="error-message" class="bg-red-500/20 border border-red-500 text-red-300 p-3 rounded-md mb-4 hidden"></div>
+
+            <form id="forget-form">
+                <div class="mb-4">
+                    <label for="account" class="block text-gray-400 mb-2">账号</label>
+                    <input type="text" id="account" name="account" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                </div>
+
+                <div class="mb-4">
+                    <label for="username" class="block text-gray-400 mb-2">用户名</label>
+                    <input type="text" id="username" name="username" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                </div>
+
+                <div class="mb-6">
+                    <label for="new-password" class="block text-gray-400 mb-2">新密码</label>
+                    <input type="password" id="new-password" name="new-password" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                </div>
+
+                <button type="submit" class="w-full bg-primary hover:bg-primary/80 text-white py-3 rounded-md font-bold transition duration-300">
+                    重置密码
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <p class="text-gray-400">已有账号？ <a href="login.html" class="text-secondary hover:underline">立即登录</a></p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const forgetForm = document.getElementById('forget-form');
+        const errorMessage = document.getElementById('error-message');
+
+        forgetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const account = document.getElementById('account').value;
+            const username = document.getElementById('username').value;
+            const newPassword = document.getElementById('new-password').value;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/api/reset-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ account, username, newPassword })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    alert('密码重置成功，请使用新密码登录');
+                    window.location.href = 'login.html';
+                } else {
+                    errorMessage.textContent = data.error;
+                    errorMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('重置密码失败:', error);
+                errorMessage.textContent = '重置密码失败，请重试';
+                errorMessage.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

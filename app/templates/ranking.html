@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 引入 Tailwind CSS（必须，样式依赖） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入 Font Awesome 图标（可选，美化用） -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <title>贪吃蛇排行榜</title>
+  <!-- 可选：自定义 Tailwind 主题（保持你之前的颜色配置） -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF3A3A',
+            secondary: '#00A8FF',
+            accent: '#FFD166',
+            dark: '#1A1A2E',
+            'dark-light': '#16213E',
+          },
+        },
+      }
+    }
+  </script>
+</head>
+
+<body class="bg-dark text-white font-sans min-h-screen">
+  <!-- 导航栏 -->
+  <nav class="bg-dark-light fixed w-full py-3 px-4">
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl font-bold text-primary">贪吃蛇排行榜</h1>
+      <a href="javascript:window.history.back()" class="text-gray-300 hover:text-white">
+        <i class="fa fa-arrow-left mr-1"></i>返回
+      </a>
+    </div>
+  </nav>
+
+  <!-- 主内容区（动态渲染数据） -->
+  <main class="pt-16 pb-8 px-4 max-w-3xl mx-auto">
+    <!-- 标题 -->
+    <div class="text-center py-6">
+      <h2 class="text-2xl font-bold mb-2 text-primary">TOP 10 玩家</h2>
+    </div>
+
+    <!-- 加载状态（数据请求中显示） -->
+    <div id="loading" class="bg-dark-light rounded-md p-6 text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+      <p>正在加载排行榜...</p>
+    </div>
+
+    <!-- 空状态（无数据时显示） -->
+    <div id="empty" class="bg-dark-light rounded-md p-6 text-center hidden">
+      <i class="fa fa-trophy text-4xl text-gray-500 mb-4"></i>
+      <p class="text-gray-400">暂无游戏记录</p>
+      <p class="text-sm text-gray-500 mt-2">玩一局冲刺榜首吧！</p>
+    </div>
+
+    <!-- 领奖台容器 -->
+    <div id="podium" class="flex justify-center items-end hidden"></div>
+
+    <!-- 排行榜容器（动态插入数据） -->
+    <div id="leaderboard" class="space-y-2 mt-8"></div>
+  </main>
+
+  <!-- JavaScript：动态请求数据并渲染 -->
+  <script>
+    // 检查用户是否登录
+    async function checkLogin() {
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/check_login', {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        return data.message === "已登录";
+      } catch (error) {
+        console.error('检查登录状态失败:', error);
+        return false;
+      }
+    }
+
+    // 页面加载时检查登录状态
+    checkLogin().then((isLoggedIn) => {
+      if (!isLoggedIn) {
+        window.location.href = 'login.html';
+      }
+    });
+
+    async function loadLeaderboard() {
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/ranking');
+        if (!response.ok) {
+          throw new Error(`请求失败：${response.status}`);
+        }
+        const data = await response.json();
+        console.log('后端返回的排行榜数据：', data);
+
+        // 2. 隐藏加载状态
+        document.getElementById('loading').classList.add('hidden');
+
+        // 3. 根据数据渲染页面
+        const leaderboard = document.getElementById('leaderboard');
+        const podium = document.getElementById('podium');
+        if (data.length === 0) {
+          // 无数据时显示空状态
+          document.getElementById('empty').classList.remove('hidden');
+        } else {
+          const podiumData = data.slice(0, 3);
+          const otherData = data.slice(3);
+
+          if (podiumData.length > 0) {
+            podium.classList.remove('hidden');
+            // 定义领奖台排列顺序 2 - 1 - 3
+            const podiumOrder = [1, 0, 2];
+            podiumOrder.forEach((index) => {
+              const item = podiumData[index];
+              const realRank = index + 1;
+              const rankClass = realRank === 1 ? 'bg-primary/20 text-primary' :
+                realRank === 2 ? 'bg-secondary/20 text-secondary' :
+                  realRank === 3 ? 'bg-accent/20 text-accent' : 'bg-gray-700/50 text-gray-300';
+
+              // 进一步增加第三名高度，使用更灵活的高度单位
+              const heightClass = realRank === 1 ? 'h-36' : realRank === 2 ? 'h-28' : 'h-24';
+
+              // 调整宽度分配，保持整体比例
+              const widthClass = 'w-1/3';
+
+              // 移除 overflow-hidden，确保内容不被隐藏
+              // 添加 p-4 增加内边距，为内容提供更多空间
+              const podiumItem = document.createElement('div');
+              podiumItem.className = `flex flex-col items-center ${heightClass} ${widthClass} bg-dark-light rounded-t-md p-4 m-1`;
+
+              // 调整字体大小，使用响应式字体
+              // 为分数添加 mb-1 增加间距
+              podiumItem.innerHTML = `
+                <div class="w-8 h-8 flex items-center justify-center rounded-full mb-3 ${rankClass}">
+                  <span class="font-bold">${realRank}</span>
+                </div>
+                <div class="flex flex-col items-center w-full">
+                  <span class="font-bold text-lg md:text-xl ${realRank < 3 ? `text-${['primary', 'secondary', 'accent'][realRank - 1]}` : ''} truncate">
+                    ${item.username}
+                  </span>
+                  <span class="font-bold text-base md:text-lg ${realRank < 3 ? `text-${['primary', 'secondary', 'accent'][realRank - 1]}` : ''} mb-1">
+                    ${item.score}
+                  </span>
+                </div>
+              `;
+              podium.appendChild(podiumItem);
+            });
+          }
+
+          if (otherData.length > 0) {
+            otherData.forEach((item, index) => {
+              const realIndex = index + 3;
+              const rankClass = realIndex === 0 ? 'bg-primary/20 text-primary' :
+                realIndex === 1 ? 'bg-secondary/20 text-secondary' :
+                  realIndex === 2 ? 'bg-accent/20 text-accent' : 'bg-gray-700/50 text-gray-300';
+
+              const rankItem = document.createElement('div');
+              rankItem.className = 'bg-dark-light rounded-md p-3 flex items-center';
+              rankItem.innerHTML = `
+                <div class="w-8 h-8 flex items-center justify-center rounded-full mr-3 ${rankClass}">
+                  <span class="font-bold">${realIndex + 1}</span>
+                </div>
+                <div class="flex-grow">
+                  <div class="flex justify-between">
+                    <span class="font-bold">${item.username}</span>
+                    <span class="font-bold ${realIndex < 3 ? `text-${['primary', 'secondary', 'accent'][realIndex]}` : ''}">
+                      ${item.score}
+                    </span>
+                  </div>
+                  <div class="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>步数: ${item.moves}</span>
+                    <span>日期: ${item.created_at}</span>
+                  </div>
+                </div>
+              `;
+              leaderboard.appendChild(rankItem);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('加载排行榜数据失败:', error);
+      }
+    }
+
+    // 页面加载完成后执行
+    window.addEventListener('DOMContentLoaded', loadLeaderboard);
+  </script>
+</body>
+</html>

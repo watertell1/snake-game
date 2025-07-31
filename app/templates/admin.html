@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理员页面</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF3A3A',
+            secondary: '#00A8FF',
+            accent: '#FFD166',
+            dark: '#1A1A2E',
+            'dark-light': '#16213E',
+          },
+        },
+      }
+    }
+  </script>
+</head>
+<body class="bg-dark text-white font-sans min-h-screen">
+  <!-- 导航栏 -->
+  <nav class="bg-dark-light fixed w-full py-3 px-4">
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl font-bold text-primary">管理员页面</h1>
+      <a href="index.html" class="text-gray-300 hover:text-white">
+        <i class="fa fa-home mr-1"></i>主页
+      </a>
+    </div>
+  </nav>
+
+  <!-- 主内容区 -->
+  <main class="pt-16 pb-8 px-4 max-w-4xl mx-auto">
+    <!-- 用户列表 -->
+    <div class="bg-dark-light rounded-md p-6 mt-6">
+      <h2 class="text-2xl font-bold mb-4 text-primary">用户列表</h2>
+      <table id="user-table" class="w-full">
+        <thead>
+          <tr class="border-b border-gray-700">
+            <th class="py-2 text-left">ID</th>
+            <th class="py-2 text-left">账号</th>
+            <th class="py-2 text-left">用户名</th>
+            <th class="py-2 text-left">操作</th>
+          </tr>
+        </thead>
+        <tbody id="user-body"></tbody>
+      </table>
+    </div>
+
+    <!-- 用户信息更新表单 -->
+    <div id="update-user-form" class="bg-dark-light rounded-md p-6 mt-6 hidden">
+      <h2 class="text-2xl font-bold mb-4 text-primary">更新用户信息</h2>
+      <input type="hidden" id="update-user-id">
+      <div class="mb-4">
+        <label for="update-account" class="block text-gray-400 mb-2">账号</label>
+        <input type="text" id="update-account" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+      </div>
+      <div class="mb-4">
+        <label for="update-username" class="block text-gray-400 mb-2">用户名</label>
+        <input type="text" id="update-username" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+      </div>
+      <div class="mb-4">
+        <label for="update-password" class="block text-gray-400 mb-2">密码</label>
+        <input type="password" id="update-password" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary">
+      </div>
+      <button id="submit-update" class="w-full bg-primary hover:bg-primary/80 text-white py-3 rounded-md font-bold transition duration-300">
+        提交更新
+      </button>
+    </div>
+
+    <!-- 用户游戏记录 -->
+    <div id="user-history" class="bg-dark-light rounded-md p-6 mt-6 hidden">
+      <h2 class="text-2xl font-bold mb-4 text-primary">用户游戏记录</h2>
+      <table id="history-table" class="w-full">
+        <thead>
+          <tr class="border-b border-gray-700">
+            <th class="py-2 text-left">日期</th>
+            <th class="py-2 text-left">分数</th>
+            <th class="py-2 text-left">步数</th>
+            <th class="py-2 text-left">时间</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    async function checkLogin() {
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/check_login', {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        return data.message === "已登录";
+      } catch (error) {
+        console.error('检查登录状态失败:', error);
+        return false;
+      }
+    }
+
+    async function loadUsers() {
+      const isLoggedIn = await checkLogin();
+      if (!isLoggedIn) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/admin/users');
+        if (!response.ok) {
+          throw new Error(`请求失败：${response.status}`);
+        }
+        const data = await response.json();
+        const userBody = document.getElementById('user-body');
+        userBody.innerHTML = '';
+
+        data.forEach(user => {
+          const row = document.createElement('tr');
+          row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+          row.innerHTML = `
+            <td class="py-3">${user.id}</td>
+            <td class="py-3">${user.account}</td>
+            <td class="py-3">${user.username}</td>
+            <td class="py-3">
+              <button class="text-secondary hover:underline mr-2" onclick="showUpdateForm(${user.id}, '${user.account}', '${user.username}')">更新</button>
+              <button class="text-red-500 hover:underline" onclick="deleteUser(${user.id})">删除</button>
+              <button class="text-accent hover:underline ml-2" onclick="loadUserHistory(${user.id})">查看记录</button>
+            </td>
+          `;
+          userBody.appendChild(row);
+        });
+      } catch (error) {
+        console.error('加载用户列表失败:', error);
+      }
+    }
+
+    async function deleteUser(user_id) {
+      if (confirm('确定要删除该用户吗？')) {
+        try {
+          const response = await fetch(`http://127.0.0.1:5000/api/admin/users/${user_id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+          });
+          if (response.ok) {
+            alert('用户删除成功');
+            loadUsers();
+          } else {
+            const data = await response.json();
+            alert(data.error);
+          }
+        } catch (error) {
+          console.error('删除用户失败:', error);
+        }
+      }
+    }
+
+    function showUpdateForm(user_id, account, username) {
+      const updateUserId = document.getElementById('update-user-id');
+      const updateAccount = document.getElementById('update-account');
+      const updateUsername = document.getElementById('update-username');
+      const updateUserForm = document.getElementById('update-user-form');
+
+      updateUserId.value = user_id;
+      updateAccount.value = account;
+      updateUsername.value = username;
+      updateUserForm.classList.remove('hidden');
+    }
+
+    async function submitUpdate() {
+      const updateUserId = document.getElementById('update-user-id').value;
+      const updateAccount = document.getElementById('update-account').value;
+      const updateUsername = document.getElementById('update-username').value;
+      const updatePassword = document.getElementById('update-password').value;
+
+      try {
+        const response = await fetch(`http://127.0.0.1:5000/api/admin/users/${updateUserId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            account: updateAccount,
+            username: updateUsername,
+            password: updatePassword
+          })
+        });
+        if (response.ok) {
+          alert('用户信息更新成功');
+          document.getElementById('update-user-form').classList.add('hidden');
+          loadUsers();
+        } else {
+          const data = await response.json();
+          alert(data.error);
+        }
+      } catch (error) {
+        console.error('更新用户信息失败:', error);
+      }
+    }
+
+    async function loadUserHistory(user_id) {
+      try {
+        const response = await fetch(`http://127.0.0.1:5000/api/admin/users/${user_id}/history`);
+        if (!response.ok) {
+          throw new Error(`请求失败：${response.status}`);
+        }
+        const data = await response.json();
+        const historyBody = document.getElementById('history-body');
+        const userHistory = document.getElementById('user-history');
+        historyBody.innerHTML = '';
+
+        if (data.length === 0) {
+          const row = document.createElement('tr');
+          row.innerHTML = '<td colspan="4" class="py-3 text-center">暂无游戏记录</td>';
+          historyBody.appendChild(row);
+        } else {
+          data.forEach(record => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+            row.innerHTML = `
+              <td class="py-3">${record.created_at}</td>
+              <td class="py-3 font-bold text-primary">${record.score}</td>
+              <td class="py-3">${record.moves}</td>
+              <td class="py-3">${record.time}</td>
+            `;
+            historyBody.appendChild(row);
+          });
+        }
+
+        userHistory.classList.remove('hidden');
+      } catch (error) {
+        console.error('加载用户游戏记录失败:', error);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadUsers);
+    document.getElementById('submit-update').addEventListener('click', submitUpdate);
+  </script>
+</body>
+</html>

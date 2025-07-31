@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>贪吃蛇游戏</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF3A3A',
+            secondary: '#00A8FF',
+            accent: '#FFD166',
+            dark: '#1A1A2E',
+            'dark-light': '#16213E',
+          },
+        },
+      }
+    }
+  </script>
+</head>
+<body class="bg-dark text-white font-sans min-h-screen">
+  <!-- 导航栏 -->
+  <nav class="bg-dark-light fixed w-full py-3 px-4">
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl font-bold text-primary">贪吃蛇游戏</h1>
+      <span id="welcome-msg" class="text-gray-300 mr-4 hidden">你好，</span>
+      <a href="#" id="logout-link" class="text-gray-300 hover:text-white hidden">
+        <i class="fa fa-sign-out mr-1"></i>退出登录
+      </a>
+      <a href="login.html" id="login-link" class="text-gray-300 hover:text-white">
+        <i class="fa fa-user mr-1"></i>请登录账号
+      </a>
+    </div>
+  </nav>
+
+  <!-- 主内容区 -->
+  <main class="pt-16 pb-8 px-4 max-w-4xl mx-auto">
+    <!-- 欢迎部分 -->
+    <section class="mb-12 text-center">
+      <h2 class="text-4xl font-bold mb-4 text-primary">贪吃蛇游戏</h2>
+      <p class="text-gray-300 max-w-2xl mx-auto">
+        经典的贪吃蛇游戏，挑战你的反应能力和策略思维。控制蛇移动，吃到食物增长身体，避免撞到墙壁和自己的身体。
+      </p>
+    </section>
+
+    <!-- 功能卡片 -->
+    <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- 游戏卡片 -->
+      <div class="bg-dark-light rounded-md overflow-hidden hover:shadow-lg hover:shadow-primary/20 transition-all duration-300">
+        <div class="p-6">
+          <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mb-4">
+            <i class="fa fa-gamepad text-xl text-primary"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">开始游戏</h3>
+          <p class="text-gray-400 mb-4">控制贪吃蛇移动，吃到食物获得高分，挑战你的极限！</p>
+          <a href="game.html" id="start-game-btn" class="inline-block bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-md transition duration-300">
+            立即开始
+          </a>
+        </div>
+      </div>
+
+      <!-- 排行榜卡片 -->
+      <div class="bg-dark-light rounded-md overflow-hidden hover:shadow-lg hover:shadow-secondary/20 transition-all duration-300">
+        <div class="p-6">
+          <div class="w-12 h-12 bg-secondary/20 rounded-full flex items-center justify-center mb-4">
+            <i class="fa fa-trophy text-xl text-secondary"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">排行榜</h3>
+          <p class="text-gray-400 mb-4">查看全球玩家的最高分记录，看看你能否登上榜首！</p>
+          <a href="ranking.html" id="ranking-btn" class="inline-block bg-secondary hover:bg-secondary/80 text-white px-4 py-2 rounded-md transition duration-300">
+            查看排名
+          </a>
+        </div>
+      </div>
+
+      <!-- 历史记录卡片 -->
+      <div class="bg-dark-light rounded-md overflow-hidden hover:shadow-lg hover:shadow-accent/20 transition-all duration-300">
+        <div class="p-6">
+          <div class="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center mb-4">
+            <i class="fa fa-history text-xl text-accent"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-2">游戏记录</h3>
+          <p class="text-gray-400 mb-4">查看你的游戏历史记录，追踪你的游戏进度和成就。</p>
+          <a href="history.html" id="history-btn" class="inline-block bg-accent hover:bg-accent/80 text-white px-4 py-2 rounded-md transition duration-300">
+            查看记录
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // 检查用户是否登录
+async function checkLogin() {
+  try {
+    const response = await fetch('http://127.0.0.1:5000/api/check_login', {
+      credentials: 'include'
+    });
+    const data = await response.json();
+
+    const welcomeMsg = document.getElementById('welcome-msg');
+    const loginLink = document.getElementById('login-link');
+    const logoutLink = document.getElementById('logout-link');
+
+    if (data.message === "已登录") {
+      loginLink.style.display = 'none';
+      logoutLink.style.display = 'block';
+      welcomeMsg.textContent = `你好，${data.username}`;
+      welcomeMsg.classList.remove('hidden');
+    } else {
+      loginLink.style.display = 'block';
+      logoutLink.style.display = 'none';
+      welcomeMsg.classList.add('hidden');
+    }
+
+    return data.message === "已登录";
+  } catch (error) {
+    console.error('检查登录状态失败:', error);
+    return false;
+  }
+}
+
+
+    // 登录处理
+    async function handleLogin() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          alert('登录成功');
+          checkLogin(); // 刷新登录状态
+        } else {
+          alert(data.error || '登录失败');
+        }
+      } catch (error) {
+        console.error('登录请求失败:', error);
+        alert('网络错误，请重试');
+      }
+    }
+
+    // 给按钮添加点击事件监听器
+    const startGameBtn = document.getElementById('start-game-btn');
+    const rankingBtn = document.getElementById('ranking-btn');
+    const historyBtn = document.getElementById('history-btn');
+
+    const handleButtonClick = async (e) => {
+      const isLoggedIn = await checkLogin();
+      if (!isLoggedIn) {
+        e.preventDefault();
+        window.location.href = 'login.html';
+      }
+    };
+
+    startGameBtn.addEventListener('click', handleButtonClick);
+    rankingBtn.addEventListener('click', handleButtonClick);
+    historyBtn.addEventListener('click', handleButtonClick);
+
+    checkLogin();
+
+    // 退出登录
+    document.getElementById('logout-link').addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (response.ok) {
+          document.getElementById('login-link').classList.remove('hidden');
+          document.getElementById('logout-link').classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('退出登录失败:', error);
+      }
+    });
+
+    document.getElementById('logout-link').addEventListener('click', function() {
+  fetch('/api/logout', { method: 'POST' })
+    .then(response => {
+      if (response.ok) {
+        // 刷新当前页面
+        location.reload();
+      }
+    })
+    .catch(error => {
+      console.error('退出登录失败', error);
+    });
+});
+  </script>
+</body>
+</html>

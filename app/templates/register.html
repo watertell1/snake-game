@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>注册</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF3A3A',
+            secondary: '#00A8FF',
+            accent: '#FFD166',
+            dark: '#1A1A2E',
+            'dark-light': '#16213E',
+          },
+        },
+      }
+    }
+  </script>
+</head>
+<body class="bg-dark text-white font-sans min-h-screen">
+  <!-- 导航栏 -->
+  <nav class="bg-dark-light fixed w-full py-3 px-4">
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl font-bold text-primary">贪吃蛇游戏</h1>
+      <a href="index.html" class="text-gray-300 hover:text-white">
+        <i class="fa fa-home mr-1"></i>主页
+      </a>
+    </div>
+  </nav>
+
+  <!-- 主内容区 -->
+  <main class="pt-16 pb-8 px-4 max-w-md mx-auto">
+    <div class="bg-dark-light rounded-md p-6">
+      <h2 class="text-2xl font-bold mb-6 text-center text-primary">注册</h2>
+
+      <div id="error-message" class="bg-red-500/20 border border-red-500 text-red-300 p-3 rounded-md mb-4 hidden"></div>
+
+      <form id="register-form">
+        <div class="mb-4">
+          <label for="account" class="block text-gray-400 mb-2">账号</label>
+          <input type="text" id="account" name="account" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+        </div>
+        <div class="mb-4">
+          <label for="username" class="block text-gray-400 mb-2">用户名</label>
+          <input type="text" id="username" name="username" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+        </div>
+
+        <div class="mb-4">
+          <label for="password" class="block text-gray-400 mb-2">密码</label>
+          <input type="password" id="password" name="password" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+        </div>
+
+        <div class="mb-6">
+          <label for="confirm_password" class="block text-gray-400 mb-2">确认密码</label>
+          <input type="password" id="confirm_password" name="confirm_password" class="w-full bg-dark border border-gray-700 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" required>
+        </div>
+
+        <button type="submit" class="w-full bg-primary hover:bg-primary/80 text-white py-3 rounded-md font-bold transition duration-300">
+          注册
+        </button>
+      </form>
+
+      <div class="mt-6 text-center">
+        <p class="text-gray-400">已有账号？ <a href="login.html" class="text-secondary hover:underline">立即登录</a></p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+   const registerForm = document.getElementById('register-form');
+    const errorMessage = document.getElementById('error-message');
+
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const account = document.getElementById('account').value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirm_password').value;
+
+      // 检查账号长度
+      if (account.length < 6) {
+        errorMessage.textContent = '账号长度必须大于等于6';
+        errorMessage.classList.remove('hidden');
+        return;
+      }
+
+      // 检查密码格式
+      const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z\d]+$/;
+      if (!passwordRegex.test(password)) {
+        errorMessage.textContent = '密码必须包含大小写字母和数字任意两种组合';
+        errorMessage.classList.remove('hidden');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        errorMessage.textContent = '两次输入的密码不一致';
+        errorMessage.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ account, username, password })
+        });
+        const data = await response.json();
+        if (response.ok) {
+          window.location.href = '/login.html';
+        } else {
+          errorMessage.textContent = data.error;
+          errorMessage.classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('注册失败:', error);
+        errorMessage.textContent = '注册失败，请重试';
+        errorMessage.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>游戏历史记录</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#FF3A3A',
+            secondary: '#00A8FF',
+            accent: '#FFD166',
+            dark: '#1A1A2E',
+            'dark-light': '#16213E',
+          },
+        },
+      }
+    }
+  </script>
+</head>
+<body class="bg-dark text-white font-sans min-h-screen">
+  <!-- 导航栏 -->
+  <nav class="bg-dark-light fixed w-full py-3 px-4">
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl font-bold text-primary">游戏历史记录</h1>
+      <a href="index.html" class="text-gray-300 hover:text-white">
+        <i class="fa fa-home mr-1"></i>主页
+      </a>
+    </div>
+  </nav>
+
+  <!-- 主内容区 -->
+  <main class="pt-16 pb-8 px-4 max-w-3xl mx-auto">
+    <!-- 标题 -->
+    <div class="text-center py-6">
+      <h2 class="text-2xl font-bold mb-2 text-primary">我的游戏记录</h2>
+    </div>
+
+    <!-- 历史记录列表 -->
+    <div class="bg-dark-light rounded-md p-4">
+      <div id="loading" class="bg-dark-light rounded-md p-6 text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p>正在加载游戏记录...</p>
+      </div>
+      <div id="empty" class="text-center py-8 hidden">
+        <i class="fa fa-folder-open-o text-4xl text-gray-500 mb-4"></i>
+        <p class="text-gray-400">暂无游戏记录</p>
+        <p class="text-sm text-gray-500 mt-2">开始游戏后，记录将显示在这里</p>
+      </div>
+      <table id="history-table" class="w-full hidden">
+        <thead>
+        <tr class="border-b border-gray-700">
+          <th class="py-2 text-left">日期</th>
+          <th class="py-2 text-left">分数</th>
+          <th class="py-2 text-left">步数</th>
+          <th class="py-2 text-left">时间</th>
+        </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script>
+    // 检查用户是否登录
+    async function checkLogin() {
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/check_login', {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        return data.message === "已登录";
+      } catch (error) {
+        console.error('检查登录状态失败:', error);
+        return false;
+      }
+    }
+
+    // 页面加载时检查登录状态
+    checkLogin().then((isLoggedIn) => {
+      if (!isLoggedIn) {
+        window.location.href = 'login.html';
+      }
+    });
+
+    const loadHistory = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:5000/api/history', {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error);
+        }
+
+        document.getElementById('loading').classList.add('hidden');
+
+        if (data.length === 0) {
+          document.getElementById('empty').classList.remove('hidden');
+        } else {
+          document.getElementById('history-table').classList.remove('hidden');
+          const historyBody = document.getElementById('history-body');
+          data.forEach(record => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-gray-800 hover:bg-gray-800/50';
+            row.innerHTML = `
+              <td class="py-3">${record.created_at}</td>
+              <td class="py-3 font-bold text-primary">${record.score}</td>
+              <td class="py-3">${record.moves}</td>
+              <td class="py-3">${record.time}</td>
+            `;
+            historyBody.appendChild(row);
+          });
+        }
+      } catch (error) {
+        console.error('加载游戏历史记录失败:', error);
+      }
+    };
+
+    loadHistory();
+  </script>
+</body>
+</html>
