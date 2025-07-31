@@ -1,4 +1,4 @@
 Flask
 Flask-Cors
-SQLAlchemy
+Flask-SQLAlchemy
 PyMySQL
