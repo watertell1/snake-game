@@ -111,6 +111,7 @@ def login():
         return jsonify({"error": f"登录失败：{str(e)}"}), 500
 
 
+
 # 静态文件访问（前端页面）
 @app.route('/<path:path>')
 def serve_static(path):
