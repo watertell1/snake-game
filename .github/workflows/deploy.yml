@@ -1,0 +1,32 @@
+name: Deploy to ECS
+
+on:
+  push:
+    branches:
+      - main  # 推送到 main 分支时触发
+
+jobs:
+  deploy:
+    name: SSH Deploy to Aliyun ECS
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.ECS_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+        ssh-keyscan -H ${{ secrets.ECS_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to ECS
+      run: |
+        ssh -i ~/.ssh/id_ed25519 ${{ secrets.ECS_USERNAME }}@${{ secrets.ECS_HOST }} << 'EOF'
+          cd /media/app  # ← 修改为你 ECS 上的项目路径
+          git pull origin main
+          source /root/venv/bin/python  # ← 如果你用了虚拟环境，写上路径
+          pip install -r requirements.txt
+          systemctl restart your-service  # ← 可选，写你重启 Flask 的命令
+        EOF
