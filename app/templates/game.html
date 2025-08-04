@@ -48,8 +48,21 @@
           <canvas id="gameCanvas" width="600" height="600"></canvas>
         </div>
 
+        <!-- 难度选择 -->
+        <div id="difficultySelection" class="mt-4 flex justify-center gap-4">
+          <button data-difficulty="easy" class="difficulty-btn bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-all duration-300">
+            <i class="fa fa-smile-o mr-1"></i>简单
+          </button>
+          <button data-difficulty="medium" class="difficulty-btn bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md transition-all duration-300">
+            <i class="fa fa-meh-o mr-1"></i>中等
+          </button>
+          <button data-difficulty="hard" class="difficulty-btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition-all duration-300">
+            <i class="fa fa-frown-o mr-1"></i>困难
+          </button>
+        </div>
+
         <!-- 游戏控制 -->
-        <div class="mt-4 flex justify-center gap-4">
+        <div id="gameControls" class="mt-4 flex justify-center gap-4 hidden">
           <button id="startBtn" class="bg-primary hover:bg-primary/80 text-white px-4 py-2 rounded-md">
             <i class="fa fa-play mr-1"></i>开始游戏
           </button>
@@ -88,6 +101,22 @@
               <span class="text-gray-400">游戏时间</span>
               <span id="time" class="text-xl font-bold text-accent">00:00</span>
             </div>
+          </div>
+
+          <div class="bg-dark rounded-md p-3">
+            <h3 class="font-bold mb-2">当前难度</h3>
+            <div id="currentDifficulty" class="text-accent text-center py-2 border border-accent/30 rounded">
+              请选择难度
+            </div>
+          </div>
+
+          <div class="bg-dark rounded-md p-3">
+            <h3 class="font-bold mb-2">难度说明</h3>
+            <ul class="text-sm text-gray-300 space-y-1">
+              <li><i class="fa fa-signal mr-1"></i>简单: 速度慢，食物少靠墙</li>
+              <li><i class="fa fa-signal mr-1"></i>中等: 速度中等，食物偶尔靠墙</li>
+              <li><i class="fa fa-signal mr-1"></i>困难: 速度快，食物经常靠墙</li>
+            </ul>
           </div>
 
           <div class="bg-dark rounded-md p-3">
@@ -137,10 +166,41 @@
       const startBtn = document.getElementById('startBtn');
       const pauseBtn = document.getElementById('pauseBtn');
       const restartBtn = document.getElementById('restartBtn');
+      const difficultyBtns = document.querySelectorAll('.difficulty-btn');
+      const difficultySelection = document.getElementById('difficultySelection');
+      const gameControls = document.getElementById('gameControls');
+      const currentDifficultyElement = document.getElementById('currentDifficulty');
 
       // 设置画布尺寸
       canvas.width = 600;
       canvas.height = 600;
+
+      // 预绘制网格以提高性能
+      const gridCanvas = document.createElement('canvas');
+      gridCanvas.width = canvas.width;
+      gridCanvas.height = canvas.height;
+      const gridCtx = gridCanvas.getContext('2d');
+
+      // 难度配置 - 调整简单难度速度，使其更流畅
+      const difficultySettings = {
+        easy: {
+          speed: 120, // 稍微提高速度（从150调整为120），减少卡顿感知
+          wallFoodProbability: 0.2 // 20%概率食物出现在靠墙位置
+        },
+        medium: {
+          speed: 100, // 移动间隔（毫秒）
+          wallFoodProbability: 0.5 // 50%概率食物出现在靠墙位置
+        },
+        hard: {
+          speed: 60, // 移动间隔（毫秒）
+          wallFoodProbability: 0.8 // 80%概率食物出现在靠墙位置
+        }
+      };
+
+      // 当前选择的难度
+      let selectedDifficulty = null;
+      let currentSpeed = 100; // 默认速度
+      let currentWallFoodProbability = 0.5; // 默认靠墙概率
 
       // 游戏变量
       let snake = [{ x: 10, y: 10 }];
@@ -154,11 +214,38 @@
       let isPaused = false;
       let gameStarted = false;
       let timerInterval;
-      let isGameOver = false; // 标记游戏是否结束
-      let isRestarting = false; // 修复：修正拼写错误（isResarting → isRestarting）
+      let isGameOver = false;
+      let isRestarting = false;
 
       // 游戏网格大小
       const gridSize = 20;
+      const gridWidth = canvas.width / gridSize;
+      const gridHeight = canvas.height / gridSize;
+
+      // 预绘制网格
+      function preDrawGrid() {
+        gridCtx.fillStyle = 'black';
+        gridCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+        gridCtx.strokeStyle = '#333';
+        gridCtx.lineWidth = 0.5; // 细线减少绘制负担
+
+        // 横向网格线
+        for (let y = 0; y <= canvas.height; y += gridSize) {
+          gridCtx.beginPath();
+          gridCtx.moveTo(0, y);
+          gridCtx.lineTo(canvas.width, y);
+          gridCtx.stroke();
+        }
+
+        // 纵向网格线
+        for (let x = 0; x <= canvas.width; x += gridSize) {
+          gridCtx.beginPath();
+          gridCtx.moveTo(x, 0);
+          gridCtx.lineTo(x, canvas.height);
+          gridCtx.stroke();
+        }
+      }
 
       // 初始化游戏
       function initGame() {
@@ -177,9 +264,37 @@
         draw();
       }
 
+      // 选择难度
+      function selectDifficulty() {
+        if (gameStarted) return;
+
+        const difficulty = this.getAttribute('data-difficulty');
+        selectedDifficulty = difficulty;
+        currentSpeed = difficultySettings[difficulty].speed;
+        currentWallFoodProbability = difficultySettings[difficulty].wallFoodProbability;
+
+        // 更新UI显示
+        difficultyBtns.forEach(btn => {
+          btn.classList.remove('ring-2', 'ring-white', 'scale-105');
+        });
+        this.classList.add('ring-2', 'ring-white', 'scale-105');
+
+        // 显示当前难度
+        const difficultyNames = {
+          easy: '简单',
+          medium: '中等',
+          hard: '困难'
+        };
+        currentDifficultyElement.textContent = difficultyNames[difficulty];
+
+        // 显示游戏控制按钮
+        difficultySelection.classList.add('hidden');
+        gameControls.classList.remove('hidden');
+      }
+
       // 开始游戏
       function startGame() {
-        if (gameStarted) return;
+        if (gameStarted || !selectedDifficulty) return;
 
         gameStarted = true;
         startBtn.disabled = true;
@@ -188,7 +303,7 @@
         isPaused = false;
         isGameOver = false;
 
-        gameInterval = setInterval(gameLoop, 100);
+        gameInterval = setInterval(gameLoop, currentSpeed);
         timerInterval = setInterval(() => {
           gameTime++;
           updateDisplay();
@@ -197,135 +312,131 @@
 
       // 暂停游戏
       function pauseGame() {
-    if (isRestarting) return;  // 新增：重新开始流程中忽略暂停操作
+        if (isRestarting) return;
 
-    isPaused = !isPaused;
+        isPaused = !isPaused;
 
-    if (isPaused) {
-        // 暂停时彻底清除定时器
-        if (gameInterval) {
+        if (isPaused) {
+          // 暂停时清除定时器
+          if (gameInterval) {
             clearInterval(gameInterval);
-            gameInterval = null;  // 显式设为null，避免残留引用
-        }
-        if (timerInterval) {
+            gameInterval = null;
+          }
+          if (timerInterval) {
             clearInterval(timerInterval);
             timerInterval = null;
-        }
-        pauseBtn.innerHTML = '<i class="fa fa-play mr-1"></i>继续';
-    } else {
-        // 恢复时重新创建唯一定时器
-        gameInterval = setInterval(gameLoop, 100);  // 保持原间隔
-        timerInterval = setInterval(() => {
+          }
+          pauseBtn.innerHTML = '<i class="fa fa-play mr-1"></i>继续';
+        } else {
+          // 恢复时重新创建定时器
+          gameInterval = setInterval(gameLoop, currentSpeed);
+          timerInterval = setInterval(() => {
             gameTime++;
             updateDisplay();
-        }, 1000);
-        pauseBtn.innerHTML = '<i class="fa fa-pause mr-1"></i>暂停';
-    }
-}
+          }, 1000);
+          pauseBtn.innerHTML = '<i class="fa fa-pause mr-1"></i>暂停';
+        }
+      }
 
       // 重新开始游戏
-      // 修复：注释符号错误（/ → //）
-      // 完全重构restartGame函数
       function restartGame() {
-    if (isRestarting) return;
-    isRestarting = true;
+        if (isRestarting) return;
+        isRestarting = true;
 
-    // 重新开始时立即禁用暂停按钮
-    pauseBtn.disabled = true;  // 新增：禁用暂停按钮
-    restartBtn.disabled = true;
+        // 禁用按钮
+        pauseBtn.disabled = true;
+        restartBtn.disabled = true;
 
-    // 清除所有现有定时器（关键步骤）
-    if (gameInterval) {
-        clearInterval(gameInterval);
-        gameInterval = null;
-    }
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
+        // 清除定时器
+        if (gameInterval) {
+          clearInterval(gameInterval);
+          gameInterval = null;
+        }
+        if (timerInterval) {
+          clearInterval(timerInterval);
+          timerInterval = null;
+        }
 
-          // 显示确认对话框
-          const confirmRestart = confirm(isGameOver
-              ? '游戏已经结束，是否重新开始？'
-              : '是否确认重新开始？');
+        // 显示确认对话框
+        const confirmRestart = confirm(isGameOver
+            ? '游戏已经结束，是否重新开始？'
+            : '是否确认重新开始？');
 
-          if (confirmRestart) {
-              // 保存当前记录（如果游戏已开始）
-              if (gameStarted) {
-                  saveGameRecord(
-                      score,
-                      moves,
-                      `${Math.floor(gameTime / 60)
-                          .toString()
-                          .padStart(2, '0')}:${(gameTime % 60).toString().padStart(2, '0')}`
-                  );
-              }
+        if (confirmRestart) {
+          // 保存当前记录
+          if (gameStarted) {
+              saveGameRecord(
+                  score,
+                  moves,
+                  `${Math.floor(gameTime / 60)
+                      .toString()
+                      .padStart(2, '0')}:${(gameTime % 60).toString().padStart(2, '0')}`
+              );
+          }
 
-              // 初始化游戏状态
-              initGame();
+          // 重新初始化游戏
+          initGame();
+          draw();
+
+          // 倒计时后启动游戏
+          let count = 3;
+          const countdownInterval = setInterval(() => {
               draw();
 
-              // 倒计时后启动游戏
-              let count = 3;
-              const countdownInterval = setInterval(() => {
-                  draw(); // 绘制游戏状态
+              // 绘制倒计时
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+              ctx.fillRect(0, 0, canvas.width, 80);
+              ctx.fillStyle = '#FFD166';
+              ctx.font = 'bold 48px Arial';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(count > 0 ? `准备开始: ${count}` : '开始！', canvas.width / 2, 40);
 
-                  // 绘制倒计时
-                  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                  ctx.fillRect(0, 0, canvas.width, 80);
-                  ctx.fillStyle = '#FFD166';
-                  ctx.font = 'bold 48px Arial';
-                  ctx.textAlign = 'center';
-                  ctx.textBaseline = 'middle';
-                  ctx.fillText(count > 0 ? `准备开始: ${count}` : '开始！', canvas.width / 2, 40);
+              count--;
 
-                  count--;
+              if (count < -1) {
+                  clearInterval(countdownInterval);
+                  draw();
 
-                  if (count < -1) {
-                      clearInterval(countdownInterval);
-                      draw(); // 清除倒计时显示
-
-                      // 启动游戏
-                      gameStarted = true;
-                      isPaused = false;
-                      isGameOver = false;
-                      startBtn.disabled = true;
-                      pauseBtn.disabled = false;
-                      pauseBtn.innerHTML = '<i class="fa fa-pause mr-1"></i>暂停';
-
-                      // 启动游戏循环
-                      gameInterval = setInterval(gameLoop, 100);
-                      timerInterval = setInterval(() => {
-                          gameTime++;
-                          updateDisplay();
-                      }, 1000);
-
-                      // 重置状态，启用按钮
-                      isRestarting = false;
-                      restartBtn.disabled = false;
-                      pauseBtn.disabled = false;
-                  }
-              }, 1000);
-          } else {
-              // 用户取消重新开始
-              if (isGameOver) {
-                  // 游戏已结束时取消，保持结束状态
-                  startBtn.disabled = false;
-              } else if (gameStarted) {
-                  // 游戏进行中取消，恢复游戏
+                  // 启动游戏
+                  gameStarted = true;
                   isPaused = false;
-                  gameInterval = setInterval(gameLoop, 100);
+                  isGameOver = false;
+                  startBtn.disabled = true;
+                  pauseBtn.disabled = false;
+                  pauseBtn.innerHTML = '<i class="fa fa-pause mr-1"></i>暂停';
+
+                  // 启动游戏循环
+                  gameInterval = setInterval(gameLoop, currentSpeed);
                   timerInterval = setInterval(() => {
                       gameTime++;
                       updateDisplay();
                   }, 1000);
-                  pauseBtn.innerHTML = '<i class="fa fa-pause mr-1"></i>暂停';
-              }
 
-              // 重置状态，启用按钮
-              isRestarting = false;
-              restartBtn.disabled = false;
+                  // 重置状态
+                  isRestarting = false;
+                  restartBtn.disabled = false;
+                  pauseBtn.disabled = false;
+              }
+          }, 1000);
+        } else {
+          // 用户取消重新开始
+          if (isGameOver) {
+              startBtn.disabled = false;
+          } else if (gameStarted) {
+              isPaused = false;
+              gameInterval = setInterval(gameLoop, currentSpeed);
+              timerInterval = setInterval(() => {
+                  gameTime++;
+                  updateDisplay();
+              }, 1000);
+              pauseBtn.innerHTML = '<i class="fa fa-pause mr-1"></i>暂停';
           }
+
+          // 重置状态
+          isRestarting = false;
+          restartBtn.disabled = false;
+        }
       }
 
       // 游戏主循环
@@ -353,9 +464,9 @@
         // 检查是否碰撞边界
         if (
           head.x < 0 ||
-          head.x >= canvas.width / gridSize ||
+          head.x >= gridWidth ||
           head.y < 0 ||
-          head.y >= canvas.height / gridSize
+          head.y >= gridHeight
         ) {
           gameOver();
           return;
@@ -390,147 +501,110 @@
         draw();
       }
 
-      // 生成食物
+      // 生成食物 - 根据难度调整靠墙概率
       function generateFood() {
         let newFood;
+        let isWallPosition;
+
         do {
-          newFood = {
-            x: Math.floor(Math.random() * (canvas.width / gridSize)),
-            y: Math.floor(Math.random() * (canvas.height / gridSize)),
-          };
-        } while (snake.some(segment => segment.x === newFood.x && segment.y === newFood.y));
+          // 决定是否生成在靠墙位置
+          const isWallFood = Math.random() < currentWallFoodProbability;
+
+          if (isWallFood) {
+            // 生成靠墙位置的食物
+            const side = Math.floor(Math.random() * 4); // 0-3 代表四个方向
+            switch (side) {
+              case 0: // 上边
+                newFood = {
+                  x: Math.floor(Math.random() * gridWidth),
+                  y: 0
+                };
+                break;
+              case 1: // 右边
+                newFood = {
+                  x: gridWidth - 1,
+                  y: Math.floor(Math.random() * gridHeight)
+                };
+                break;
+              case 2: // 下边
+                newFood = {
+                  x: Math.floor(Math.random() * gridWidth),
+                  y: gridHeight - 1
+                };
+                break;
+              case 3: // 左边
+                newFood = {
+                  x: 0,
+                  y: Math.floor(Math.random() * gridHeight)
+                };
+                break;
+            }
+          } else {
+            // 生成非靠墙位置的食物（至少距离边界1格）
+            newFood = {
+              x: 1 + Math.floor(Math.random() * (gridWidth - 2)),
+              y: 1 + Math.floor(Math.random() * (gridHeight - 2))
+            };
+          }
+
+          // 检查是否与蛇身重叠
+          isWallPosition = snake.some(segment => segment.x === newFood.x && segment.y === newFood.y);
+        } while (isWallPosition);
 
         food = newFood;
       }
 
-      // 绘制游戏
+      // 绘制游戏 - 优化版本，提高性能
       function draw() {
-          // 清空画布
-          ctx.fillStyle = 'black';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          // 绘制预渲染的网格（大幅提升性能）
+          ctx.drawImage(gridCanvas, 0, 0);
 
-          // 绘制网格
-          ctx.strokeStyle = '#333';
-          for (let x = 0; x < canvas.width; x += gridSize) {
-              ctx.beginPath();
-              ctx.moveTo(x, 0);
-              ctx.lineTo(x, canvas.height);
-              ctx.stroke();
-          }
-          for (let y = 0; y < canvas.height; y += gridSize) {
-              ctx.beginPath();
-              ctx.moveTo(0, y);
-              ctx.lineTo(canvas.width, y);
-              ctx.stroke();
-          }
-
-          // 绘制蛇 - 优化版本
+          // 绘制蛇 - 简化绘制逻辑，减少计算量
           snake.forEach((segment, index) => {
               const x = segment.x * gridSize;
               const y = segment.y * gridSize;
 
-              // 创建渐变色
-              const gradient = ctx.createLinearGradient(x, y, x + gridSize, y + gridSize);
-
-              // 根据蛇的位置设置不同颜色
               if (index === 0) {
-                  // 头部 - 使用主色调渐变
-                  gradient.addColorStop(0, '#FF6B6B');
-                  gradient.addColorStop(1, '#FF3A3A');
+                  // 蛇头 - 简化绘制，去掉渐变
+                  ctx.fillStyle = '#FF3A3A';
+                  ctx.fillRect(x, y, gridSize - 1, gridSize - 1);
 
-                  // 绘制头部（带圆角）
-                  ctx.fillStyle = gradient;
-                  ctx.beginPath();
-                  ctx.roundRect(x, y, gridSize - 1, gridSize - 1, 5);
-                  ctx.fill();
-
-                  // 绘制眼睛
+                  // 简化眼睛绘制
                   ctx.fillStyle = 'white';
                   const eyeSize = gridSize / 6;
                   const eyeOffset = gridSize / 4;
 
-                  // 根据方向调整眼睛位置
                   if (direction === 'right') {
-                      ctx.beginPath();
-                      ctx.arc(x + gridSize - eyeOffset, y + eyeOffset, eyeSize, 0, Math.PI * 2);
-                      ctx.arc(x + gridSize - eyeOffset, y + gridSize - eyeOffset, eyeSize, 0, Math.PI * 2);
-                      ctx.fill();
+                      ctx.fillRect(x + gridSize - eyeOffset - eyeSize, y + eyeOffset, eyeSize, eyeSize);
+                      ctx.fillRect(x + gridSize - eyeOffset - eyeSize, y + gridSize - eyeOffset - eyeSize, eyeSize, eyeSize);
                   } else if (direction === 'left') {
-                      ctx.beginPath();
-                      ctx.arc(x + eyeOffset, y + eyeOffset, eyeSize, 0, Math.PI * 2);
-                      ctx.arc(x + eyeOffset, y + gridSize - eyeOffset, eyeSize, 0, Math.PI * 2);
-                      ctx.fill();
+                      ctx.fillRect(x + eyeOffset, y + eyeOffset, eyeSize, eyeSize);
+                      ctx.fillRect(x + eyeOffset, y + gridSize - eyeOffset - eyeSize, eyeSize, eyeSize);
                   } else if (direction === 'up') {
-                      ctx.beginPath();
-                      ctx.arc(x + eyeOffset, y + eyeOffset, eyeSize, 0, Math.PI * 2);
-                      ctx.arc(x + gridSize - eyeOffset, y + eyeOffset, eyeSize, 0, Math.PI * 2);
-                      ctx.fill();
+                      ctx.fillRect(x + eyeOffset, y + eyeOffset, eyeSize, eyeSize);
+                      ctx.fillRect(x + gridSize - eyeOffset - eyeSize, y + eyeOffset, eyeSize, eyeSize);
                   } else if (direction === 'down') {
-                      ctx.beginPath();
-                      ctx.arc(x + eyeOffset, y + gridSize - eyeOffset, eyeSize, 0, Math.PI * 2);
-                      ctx.arc(x + gridSize - eyeOffset, y + gridSize - eyeOffset, eyeSize, 0, Math.PI * 2);
-                      ctx.fill();
-                  }
-
-                  // 绘制瞳孔
-                  ctx.fillStyle = 'black';
-                  const pupilSize = eyeSize / 2;
-
-                  if (direction === 'right') {
-                      ctx.beginPath();
-                      ctx.arc(x + gridSize - eyeOffset + 1, y + eyeOffset, pupilSize, 0, Math.PI * 2);
-                      ctx.arc(x + gridSize - eyeOffset + 1, y + gridSize - eyeOffset, pupilSize, 0, Math.PI * 2);
-                      ctx.fill();
-                  } else if (direction === 'left') {
-                      ctx.beginPath();
-                      ctx.arc(x + eyeOffset - 1, y + eyeOffset, pupilSize, 0, Math.PI * 2);
-                      ctx.arc(x + eyeOffset - 1, y + gridSize - eyeOffset, pupilSize, 0, Math.PI * 2);
-                      ctx.fill();
-                  } else if (direction === 'up') {
-                      ctx.beginPath();
-                      ctx.arc(x + eyeOffset, y + eyeOffset - 1, pupilSize, 0, Math.PI * 2);
-                      ctx.arc(x + gridSize - eyeOffset, y + eyeOffset - 1, pupilSize, 0, Math.PI * 2);
-                      ctx.fill();
-                  } else if (direction === 'down') {
-                      ctx.beginPath();
-                      ctx.arc(x + eyeOffset, y + gridSize - eyeOffset + 1, pupilSize, 0, Math.PI * 2);
-                      ctx.arc(x + gridSize - eyeOffset, y + gridSize - eyeOffset + 1, pupilSize, 0, Math.PI * 2);
-                      ctx.fill();
+                      ctx.fillRect(x + eyeOffset, y + gridSize - eyeOffset - eyeSize, eyeSize, eyeSize);
+                      ctx.fillRect(x + gridSize - eyeOffset - eyeSize, y + gridSize - eyeOffset - eyeSize, eyeSize, eyeSize);
                   }
               } else {
-                  // 身体 - 使用次要色调渐变
-                  // 根据位置变化颜色深浅
-                  const colorIntensity = 1 - (index / snake.length) * 0.5;
-                  gradient.addColorStop(0, `rgba(0, 168, 255, ${colorIntensity})`);
-                  gradient.addColorStop(1, `rgba(0, 120, 255, ${colorIntensity})`);
-
-                  // 身体部分带圆角，比头部小一点
-                  ctx.fillStyle = gradient;
-                  ctx.beginPath();
-                  ctx.roundRect(x + 1, y + 1, gridSize - 3, gridSize - 3, 3);
-                  ctx.fill();
+                  // 蛇身 - 简化绘制，去掉渐变和圆角
+                  // 根据位置轻微调整颜色，减少计算量
+                  const alpha = Math.max(0.5, 1 - (index / snake.length) * 0.5);
+                  ctx.fillStyle = `rgba(0, 168, 255, ${alpha})`;
+                  ctx.fillRect(x, y, gridSize - 1, gridSize - 1);
               }
           });
 
-          // 绘制食物（优化为圆形）
+          // 绘制食物 - 简化绘制
           ctx.fillStyle = '#FFD166';
+          const foodX = food.x * gridSize;
+          const foodY = food.y * gridSize;
           ctx.beginPath();
           ctx.arc(
-              food.x * gridSize + gridSize / 2,
-              food.y * gridSize + gridSize / 2,
+              foodX + gridSize / 2,
+              foodY + gridSize / 2,
               (gridSize - 1) / 2,
-              0,
-              Math.PI * 2
-          );
-          ctx.fill();
-
-          // 食物高光效果
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-          ctx.beginPath();
-          ctx.arc(
-              food.x * gridSize + gridSize / 3,
-              food.y * gridSize + gridSize / 3,
-              (gridSize - 1) / 6,
               0,
               Math.PI * 2
           );
@@ -562,43 +636,42 @@
 
       // 游戏结束
       function gameOver() {
-    clearInterval(gameInterval);
-    clearInterval(timerInterval);
+        clearInterval(gameInterval);
+        clearInterval(timerInterval);
 
-    isGameOver = true;
-    gameStarted = false;
+        isGameOver = true;
+        gameStarted = false;
 
-    // 先绘制最后游戏状态
-    draw();
+        // 先绘制最后游戏状态
+        draw();
 
-    // 顶部显示游戏结束信息，不遮挡完整棋盘
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(0, 0, canvas.width, 100);
+        // 顶部显示游戏结束信息
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, canvas.width, 100);
 
-    ctx.fillStyle = 'white';
-    ctx.font = '24px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('游戏结束', canvas.width / 2, 30);
-    ctx.font = '20px Arial';
-    ctx.fillText(`最终得分: ${score}`, canvas.width / 2, 70);
+        ctx.fillStyle = 'white';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('游戏结束', canvas.width / 2, 30);
+        ctx.font = '20px Arial';
+        ctx.fillText(`最终得分: ${score}`, canvas.width / 2, 70);
 
-    // 保存游戏记录
-    saveGameRecord(
-        score,
-        moves,
-        `${Math.floor(gameTime / 60)
-            .toString()
-            .padStart(2, '0')}:${(gameTime % 60).toString().padStart(2, '0')}`
-    );
+        // 保存游戏记录
+        saveGameRecord(
+            score,
+            moves,
+            `${Math.floor(gameTime / 60)
+                .toString()
+                .padStart(2, '0')}:${(gameTime % 60).toString().padStart(2, '0')}`
+        );
 
-    // 重置按钮状态
-    startBtn.disabled = false;
-    pauseBtn.disabled = true;
-    restartBtn.disabled = false;
-    pauseBtn.innerHTML = '<i class="fa fa-pause mr-1"></i>暂停';
-}
-
+        // 重置按钮状态
+        startBtn.disabled = false;
+        pauseBtn.disabled = true;
+        restartBtn.disabled = false;
+        pauseBtn.innerHTML = '<i class="fa fa-pause mr-1"></i>暂停';
+      }
 
       // 保存游戏记录
       async function saveGameRecord(score, moves, time) {
@@ -607,7 +680,12 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ score, moves, time }),
+            body: JSON.stringify({
+              score,
+              moves,
+              time,
+              difficulty: selectedDifficulty
+            }),
           });
 
           const data = await response.json();
@@ -664,31 +742,13 @@
         }
       });
 
-      // 倒计时函数
-      function countdownBeforeStart(callback) {
-    let count = 3;
+      // 初始化预绘制网格
+      preDrawGrid();
 
-    const countdownInterval = setInterval(() => {
-        draw();
-
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(0, 0, canvas.width, 80);
-        ctx.fillStyle = '#FFD166';
-        ctx.font = 'bold 48px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(count > 0 ? `准备开始: ${count}` : '开始！', canvas.width / 2, 40);
-
-        count--;
-
-        if (count < -1) {
-            clearInterval(countdownInterval);
-            draw();
-            callback();
-        }
-    }, 1000);
-}
-
+      // 难度选择按钮事件
+      difficultyBtns.forEach(btn => {
+        btn.addEventListener('click', selectDifficulty);
+      });
 
       // 按钮事件绑定
       startBtn.addEventListener('click', startGame);
