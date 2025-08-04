@@ -1,0 +1,1 @@
+([('app', '/Users/water-tell/PythonProject6/app/dist/app', 'EXECUTABLE')],)
