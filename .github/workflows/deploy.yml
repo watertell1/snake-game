@@ -28,5 +28,13 @@ jobs:
           git pull origin main
           source /root/venv/bin/python  # ← 如果你用了虚拟环境，写上路径
           pip install -r requirements.txt
-          systemctl restart your-service  # ← 可选，写你重启 Flask 的命令
+          if [ -f venv/bin/activate ]; then   # ← 可选，写你重启 Flask 的命令
+            source venv/bin/activate
+          else
+            python3 -m venv venv
+            source venv/bin/activate
+          fi
+          pip install -r requirements.txt
+          pkill -f app.py 
+          nohup python app.py > flask.log 2>&1 &
         EOF
