@@ -18,7 +18,7 @@ app.config['SESSION_COOKIE_SECURE'] = False  # 开发环境关闭HTTPS验证
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # CORS配置（允许前端跨域请求）
-CORS(app, supports_credentials=True, origins=['http://localhost:5000', 'http://127.0.0.1:5000'])
+CORS(app, supports_credentials=True, origins=['http://localhost:5000', 'http://114.215.185.150:5000'])
 
 db = SQLAlchemy(app)
 
@@ -384,4 +384,4 @@ def admin_get_user_history(user_id):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=True, host='114.215.185.150', port=5000)

@@ -4,7 +4,7 @@ import subprocess
 import hashlib
 
 # 要监控的目录
-WATCHED_DIR = "./"
+WATCHED_DIR = "/Users/water-tell/PythonProject6/app"
 CHECK_INTERVAL = 5  # 每5秒检测一次
 
 def hash_directory(path):
