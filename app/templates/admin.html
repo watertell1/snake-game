@@ -93,7 +93,7 @@
   <script>
     async function checkLogin() {
       try {
-        const response = await fetch('http://127.0.0.1:5000/api/check_login', {
+        const response = await fetch('http://114.215.185.150:5000/api/check_login', {
           credentials: 'include'
         });
         const data = await response.json();
@@ -112,7 +112,7 @@
       }
 
       try {
-        const response = await fetch('http://127.0.0.1:5000/api/admin/users');
+        const response = await fetch('http://114.215.185.150:5000/api/admin/users');
         if (!response.ok) {
           throw new Error(`请求失败：${response.status}`);
         }
@@ -143,7 +143,7 @@
     async function deleteUser(user_id) {
       if (confirm('确定要删除该用户吗？')) {
         try {
-          const response = await fetch(`http://127.0.0.1:5000/api/admin/users/${user_id}`, {
+          const response = await fetch(`http://114.215.185.150:5000/api/admin/users/${user_id}`, {
             method: 'DELETE',
             credentials: 'include'
           });
@@ -179,7 +179,7 @@
       const updatePassword = document.getElementById('update-password').value;
 
       try {
-        const response = await fetch(`http://127.0.0.1:5000/api/admin/users/${updateUserId}`, {
+        const response = await fetch(`http://114.215.185.150:5000/api/admin/users/${updateUserId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json'
@@ -206,7 +206,7 @@
 
     async function loadUserHistory(user_id) {
       try {
-        const response = await fetch(`http://127.0.0.1:5000/api/admin/users/${user_id}/history`);
+        const response = await fetch(`http://114.215.185.150:5000/api/admin/users/${user_id}/history`);
         if (!response.ok) {
           throw new Error(`请求失败：${response.status}`);
         }
