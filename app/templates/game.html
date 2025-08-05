@@ -139,7 +139,7 @@
     // 检查用户是否登录
     async function checkLogin() {
       try {
-        const response = await fetch('http://114.215.185.150:5000/api/check_login', {
+        const response = await fetch('http://114.215.185.150:8000/api/check_login', {
           credentials: 'include',
         });
         const data = await response.json();
